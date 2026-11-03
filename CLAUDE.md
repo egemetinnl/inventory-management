@@ -42,6 +42,10 @@ cd client
 npm install && npm run dev
 ```
 
+## Code Documentation
+
+- Always add comments when changing non-obvious logic (filtering rules, date/month handling, computed-property dependencies, data transforms, workarounds). Explain the why, not what the code does line by line.
+
 ## Key Patterns
 
 **Filter System**: 4 filters (Time Period, Warehouse, Category, Order Status) apply to all data via query params

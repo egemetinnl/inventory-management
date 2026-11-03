@@ -74,6 +74,41 @@
           </table>
         </div>
       </div>
+
+      <div class="card submitted-section">
+        <div class="card-header">
+          <h3 class="card-title">{{ t('orders.submittedOrders') }} ({{ submittedOrders.length }})</h3>
+        </div>
+        <div v-if="submittedLoading" class="loading">{{ t('common.loading') }}</div>
+        <div v-else-if="submittedError" class="error">{{ submittedError }}</div>
+        <div v-else-if="submittedOrders.length === 0" class="submitted-empty">{{ t('orders.submittedEmpty') }}</div>
+        <div v-else class="table-container">
+          <table class="submitted-table">
+            <thead>
+              <tr>
+                <th>{{ t('orders.submittedTable.orderNumber') }}</th>
+                <th>{{ t('orders.submittedTable.submittedAt') }}</th>
+                <th>{{ t('orders.submittedTable.suppliers') }}</th>
+                <th>{{ t('orders.submittedTable.items') }}</th>
+                <th>{{ t('orders.submittedTable.total') }}</th>
+                <th>{{ t('orders.submittedTable.leadTime') }}</th>
+                <th>{{ t('orders.submittedTable.expectedDelivery') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="order in submittedOrders" :key="order.id">
+                <td><strong>{{ order.order_number }}</strong></td>
+                <td>{{ formatDate(order.submitted_at) }}</td>
+                <td>{{ order.suppliers.join(', ') }}</td>
+                <td>{{ order.items.length }}</td>
+                <td><strong>{{ formatMoney(order.total_value) }}</strong></td>
+                <td>{{ t('restocking.leadTimeDays', { days: order.lead_time_days }) }}</td>
+                <td>{{ formatDate(order.expected_delivery) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -83,6 +118,7 @@ import { ref, onMounted, watch, computed } from 'vue'
 import { api } from '../api'
 import { useFilters } from '../composables/useFilters'
 import { useI18n } from '../composables/useI18n'
+import { formatCurrency } from '../utils/currency'
 
 export default {
   name: 'Orders',
@@ -95,6 +131,10 @@ export default {
     const loading = ref(true)
     const error = ref(null)
     const orders = ref([])
+    const submittedOrders = ref([])
+    const submittedLoading = ref(true)
+    const submittedError = ref(null)
+    let submittedRequestId = 0
 
     // Use shared filters
     const {
@@ -124,9 +164,30 @@ export default {
       }
     }
 
+    const loadSubmittedOrders = async () => {
+      const id = ++submittedRequestId
+      try {
+        submittedLoading.value = true
+        submittedError.value = null
+        const { category, month } = getCurrentFilters()
+        const result = await api.getRestockOrders({ category, month })
+        if (id !== submittedRequestId) return
+        submittedOrders.value = result
+      } catch (err) {
+        if (id !== submittedRequestId) return
+        submittedError.value = t('orders.submittedLoadFailed')
+        console.error('Submitted orders load error:', err)
+      } finally {
+        if (id === submittedRequestId) submittedLoading.value = false
+      }
+    }
+
+    const formatMoney = (amount) => formatCurrency(Number(amount) || 0, currentCurrency.value)
+
     // Watch for filter changes and reload data
     watch([selectedPeriod, selectedLocation, selectedCategory, selectedStatus], () => {
       loadOrders()
+      loadSubmittedOrders()
     })
 
     const getOrdersByStatus = (status) => {
@@ -146,20 +207,29 @@ export default {
     const formatDate = (dateString) => {
       const { currentLocale } = useI18n()
       const locale = currentLocale.value === 'ja' ? 'ja-JP' : 'en-US'
-      return new Date(dateString).toLocaleDateString(locale, {
+      const d = new Date(dateString)
+      if (isNaN(d.getTime())) return String(dateString ?? '')
+      return d.toLocaleDateString(locale, {
         year: 'numeric',
         month: 'short',
         day: 'numeric'
       })
     }
 
-    onMounted(loadOrders)
+    onMounted(() => {
+      loadOrders()
+      loadSubmittedOrders()
+    })
 
     return {
       t,
       loading,
       error,
       orders,
+      submittedOrders,
+      submittedLoading,
+      submittedError,
+      formatMoney,
       getOrdersByStatus,
       getOrderStatusClass,
       formatDate,
@@ -172,6 +242,20 @@ export default {
 </script>
 
 <style scoped>
+.submitted-section {
+  margin-top: 1.5rem;
+}
+
+.submitted-table {
+  width: 100%;
+}
+
+.submitted-empty {
+  padding: 2rem;
+  text-align: center;
+  color: #64748b;
+}
+
 /* Fixed table layout to prevent column shifting */
 .orders-table {
   table-layout: fixed;

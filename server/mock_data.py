@@ -35,5 +35,12 @@ recent_transactions = load_json_file('transactions.json')
 # Load purchase orders
 purchase_orders = load_json_file('purchase_orders.json')
 
+# Supplier lead times, referenced by demand forecast records via supplier_id
+suppliers = load_json_file('suppliers.json')
+
+# Restock orders submitted from the Restocking tab. Kept in memory only, so they
+# are lost on restart, like the rest of the mock data. Written by POST /api/restock/orders.
+restock_orders = []
+
 # All data is now loaded from JSON files in the data/ directory
 # This allows for easier maintenance and updates of the sample data

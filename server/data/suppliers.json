@@ -1,0 +1,17 @@
+[
+  {
+    "id": "SUP-01",
+    "name": "Pacific Components Ltd",
+    "lead_time_days": 14
+  },
+  {
+    "id": "SUP-02",
+    "name": "Northern Electronics Co.",
+    "lead_time_days": 21
+  },
+  {
+    "id": "SUP-03",
+    "name": "Atlas Industrial Supply",
+    "lead_time_days": 35
+  }
+]
